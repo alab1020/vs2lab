@@ -6,9 +6,9 @@ import logging
 import socket
 
 import const_cs
-from context import lab_logging
+#from context import lab_logging
 
-lab_logging.setup(stream_level=logging.INFO)  # init loging channels for the lab
+#lab_logging.setup(stream_level=logging.INFO)  # init loging channels for the lab
 
 # pylint: disable=logging-not-lazy, line-too-long
 
@@ -24,6 +24,26 @@ class Server:
         self.sock.settimeout(3)  # time out in order not to block forever
         self._logger.info("Server bound to socket " + str(self.sock))
 
+        # Telefonbuchs
+        
+        self.telefonbuch = {}
+        for i in range(1,300):
+            name =f"user{i}"
+            nummer = 100000 + i * 35 
+            self.telefonbuch[name] = nummer
+
+        
+
+    def handle_request(self, request):
+        if request.startswith("GETALL"):
+            entries = [f"{name}: {nummer}" for name, nummer in self.telefonbuch.items()]
+            return "\n".join(entries)
+        elif request.startswith("GET"):
+            name_list = request.split(" ")
+            name = name_list[1]
+            number = self.telefonbuch.get(name)
+            return f"{name}: {number}\n"
+
     def serve(self):
         """ Serve echo """
         self.sock.listen(1)
@@ -35,7 +55,8 @@ class Server:
                     data = connection.recv(1024)  # receive data from client
                     if not data:
                         break  # stop if client stopped
-                    connection.send(data + "*".encode('ascii'))  # return sent data plus an "*"
+                    response = self.handle_request(data.decode('ascii'))
+                    connection.send(response.encode('ascii'))  # return sent data plus an "*"
                 connection.close()  # close the connection
             except socket.timeout:
                 pass  # ignore timeouts
@@ -52,16 +73,26 @@ class Client:
         self.sock.connect((const_cs.HOST, const_cs.PORT))
         self.logger.info("Client connected to socket " + str(self.sock))
 
-    def call(self, msg_in="Hello, world"):
+    def send_request(self, request):
         """ Call server """
-        self.sock.send(msg_in.encode('ascii'))  # send encoded string as data
+        self.sock.send(request.encode('ascii'))  # send encoded string as data
         data = self.sock.recv(1024)  # receive the response
-        msg_out = data.decode('ascii')
-        print(msg_out)  # print the result
+        response = data.decode('ascii')
         self.sock.close()  # close the connection
         self.logger.info("Client down.")
-        return msg_out
+        return response
+
+    def GET(self, name):
+        response = self.send_request(f"GET {name}")
+        print(response)
+    
+    def GETALL(self):
+        response = self.send_request("GETALL")
+        print(response)
 
     def close(self):
         """ Close socket """
         self.sock.close()
+"""
+Client and server using classes
+"""
