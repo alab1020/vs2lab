@@ -25,16 +25,23 @@ class TestEchoService(unittest.TestCase):
         super().setUp()
         self.client = clientserver.Client()  # create new client for each test
 
-    def test_srv_get(self):  # each test_* function is a test
-        """Test phone directory GET request"""
-        msg = self.client.call("GET Hakim")
-        self.assertTrue(msg.startswith("Hakim: "))  # Should return name and number
 
-    def test_srv_getall(self):  # each test_* function is a test
-        """Test phone directory GETALL request"""
-        msg = self.client.call("GETALL")
-        self.assertIn("Hakim: ", msg)  # Should contain phone directory entries
-        self.assertIn("Weber: ", msg)
+    # TESTS
+
+    def test_srv_get(self):
+        """Test simple GET"""
+        msg = self.client.GET("Hofmann")
+        self.assertEqual(msg, 'Hofmann: 15643\n')
+
+    def test_srv_getnotfound(self):
+        """Test with unknown name"""
+        msg = self.client.GET("Schmidt")
+        self.assertEqual(msg, "Schmidt not found\n")
+
+    def test_srv_getall(self):
+        """Test simple GETALL"""
+        msg = self.client.GETALL()
+        self.assertEqual(msg, "Korn: 13245\nWeber: 54321\nHofmann: 15643\nBjörn: 645646")
 
     def tearDown(self):
         self.client.close()  # terminate client after each test
