@@ -41,7 +41,7 @@ class Client:
     
         # Receive Server Ack
         msgrcv = self.chan.receive_from(self.server)  # wait for response
-        if(msgrcv[1]=="Ack -> Received Request"):
+        if(msgrcv[1]== constRPC.ACK + " -> Received Request"):
             self.serverIsBusy = True
             clientAck(msgrcv)
     
@@ -75,7 +75,7 @@ class Server:
                 msgrpc = msgreq[1]  # fetch call & parameters
                 if constRPC.APPEND == msgrpc[0]:  # check what is being requested
                     # Send ack message
-                    self.chan.send_to({client}, "Ack -> Received Request")
+                    self.chan.send_to({client}, constRPC.ACK + " -> Received Request")
                     result = self.append(msgrpc[1], msgrpc[2])  # do local call
                     time.sleep(10)
                     self.chan.send_to({client}, result)  # return response
