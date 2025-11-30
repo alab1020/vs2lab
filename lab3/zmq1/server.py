@@ -1,4 +1,5 @@
 import zmq
+import time
 
 import constRR
 
@@ -16,5 +17,6 @@ while True:
     if b"STOP" not in message:  # if not to stop...
         print("Received " + message.decode())
         reply_socket.send((message.decode() + "*").encode())  # append "*" to message
+        time.sleep(4)  # wait a bit
     else:  # else...
         break  # break out of loop and end
