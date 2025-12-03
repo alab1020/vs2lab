@@ -26,7 +26,7 @@ sentences = [
     "Microservices are popular",
     "Cloud computing is the future",
     "Labor Abgabe ist spannend",
-    ""
+    
 ]
 
 print("Splitter started...")  
@@ -39,4 +39,3 @@ for i in range(25):
     socket.send(pickle.dumps(msg))
 
 socket.close()
-context.term()
