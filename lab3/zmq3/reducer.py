@@ -1,6 +1,6 @@
 import zmq
 import sys
-from collections import defaultdict
+import pickle
 import constPipe
 
 me = sys.argv[1] 
@@ -10,11 +10,23 @@ context = zmq.Context()
 socket = context.socket(zmq.PULL)
 socket.bind(f"tcp://*:{port}") 
 
-counts = defaultdict(int)
+counts = {}  # normales dict statt defaultdict
 
-print(f"Reducer {me} started...")  
+print(f"Reducer {me} started on port {port}...")
 
 while True:
-    word = socket.recv_string()
-    counts[word] += 1
-    print(f"Reducer {me}: {word} -> {counts[word]}")  
+    try:
+        msg = socket.recv()
+        word = pickle.loads(msg)
+        
+        # Prüfe: existiert das Wort schon?
+        if word in counts:
+            counts[word] += 1
+        else:
+            counts[word] = 1
+        
+        print(f"Reducer {me}: {word} : {counts[word]}")
+    except Exception as e:
+        print(f"Error in Reducer {me}: {e}")
+        break
+

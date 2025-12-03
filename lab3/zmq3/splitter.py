@@ -1,11 +1,12 @@
 import zmq
 import time
-import random
+import pickle
 import constPipe
+import random 
 
 context = zmq.Context()
 socket = context.socket(zmq.PUSH)
-socket.bind(f"tcp://*:{constPipe.SPLITTER_OUT_PORT}")
+socket.bind(f"tcp://127.0.0.1:{constPipe.SPLITTER_OUT_PORT}")
 
 sentences = [
     "Hello world",
@@ -24,13 +25,18 @@ sentences = [
     "APIs are useful",
     "Microservices are popular",
     "Cloud computing is the future",
+    "Labor Abgabe ist spannend",
+    ""
 ]
 
 print("Splitter started...")  
-time.sleep(1)  # 
+time.sleep(1)  
 
-for i in range(20):  
-    msg = random.choice(sentences)  
-    print(f"Splitter sent: {msg}")  
-    socket.send_string(msg) 
-    time.sleep(0.2)  
+for i in range(25):  
+    msg = random.choice(sentences)
+    print(f"Splitter sent: {i+1}:{msg}")  
+    time.sleep(0.5)
+    socket.send(pickle.dumps(msg))
+
+socket.close()
+context.term()

@@ -1,6 +1,7 @@
 import zmq
 import sys
 import hashlib
+import pickle
 import constPipe
 
 me = sys.argv[1]
@@ -18,16 +19,17 @@ print(f"Mapper {me} started...")
 
 while True:
     try:
-        sentence = receiver.recv_string(flags=zmq.NOBLOCK)
-        if sentence:
-            print(f"Mapper {me} received: {sentence}")
-            for word in sentence.split():
+        sentence = receiver.recv()
+        msg = pickle.loads(sentence)
+        if msg:
+            print(f"Mapper {me} received: {msg}")
+            for word in msg.split():
                 h = int(hashlib.md5(word.encode()).hexdigest(), 16)
                 if h % 2 == 0:
                     sender = sender1
                 else:
                     sender = sender2
-                sender.send_string(word)
+                sender.send(pickle.dumps(word))
         else:
             continue
 
