@@ -29,10 +29,29 @@ class DummyChordClient:
         self.channel.bind(self.node_id)
 
     def run(self):
-        print("Implement me pls...")
-        self.channel.send_to(  # a final multicast
-            {i.decode() for i in list(self.channel.channel.smembers('node'))},
-            constChord.STOP)
+        import random
+        nodes = {i.decode() for i in list(self.channel.channel.smembers('node'))}
+        if not nodes:
+            print("No nodes available for lookup.")
+            return
+
+        # pick random key and a random start node to perform iterative lookup
+        key = random.randrange(0, self.channel.MAXPROC)
+        start_node = random.choice(list(nodes))
+        print(f"Client: LOOKUP key={key:04n} via node {start_node}")
+
+        # send lookup request to chosen start node
+        self.channel.send_to({start_node}, (constChord.LOOKUP_REQ, key))
+
+        # wait for reply (from any node)
+        sender, message = self.channel.receive_from_any()
+        if message[0] == constChord.LOOKUP_REP:
+            print(f"Client: LOOKUP result for key={key:04n} -> node {int(message[1]):04n} (from {sender})")
+        else:
+            print(f"Client: unexpected reply {message} from {sender}")
+
+        # stop nodes after lookup
+        self.channel.send_to({i.decode() for i in list(self.channel.channel.smembers('node'))}, constChord.STOP)
 
 
 def create_and_run(num_bits, node_class, enter_bar, run_bar):
