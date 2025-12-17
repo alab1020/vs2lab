@@ -24,34 +24,47 @@ class DummyChordClient:
     def __init__(self, channel):
         self.channel = channel
         self.node_id = channel.join('client')
+        self.logger = logging.getLogger("vs2lab.lab4.chord.DummyChordClient")
 
     def enter(self):
         self.channel.bind(self.node_id)
 
     def run(self):
+        # Lab4: Chord sistemi
         import random
-        nodes = {i.decode() for i in list(self.channel.channel.smembers('node'))}
+        
+        # Get all nodes in the ring
+        nodes = {int(node.decode()) for node in self.channel.channel.smembers('node')}
+        
         if not nodes:
-            print("No nodes available for lookup.")
+            print("No nodes available in the ring!")
             return
-
-        # pick random key and a random start node to perform iterative lookup
-        key = random.randrange(0, self.channel.MAXPROC)
-        start_node = random.choice(list(nodes))
-        print(f"Client: LOOKUP key={key:04n} via node {start_node}")
-
-        # send lookup request to chosen start node
-        self.channel.send_to({start_node}, (constChord.LOOKUP_REQ, key))
-
-        # wait for reply (from any node)
-        sender, message = self.channel.receive_from_any()
-        if message[0] == constChord.LOOKUP_REP:
-            print(f"Client: LOOKUP result for key={key:04n} -> node {int(message[1]):04n} (from {sender})")
-        else:
-            print(f"Client: unexpected reply {message} from {sender}")
-
-        # stop nodes after lookup
-        self.channel.send_to({i.decode() for i in list(self.channel.channel.smembers('node'))}, constChord.STOP)
+        
+        # Choose a random node to query
+        target_node = random.choice(list(nodes))
+        
+        # Choose a random valid key from the address space
+        random_key = random.randint(0, self.channel.MAXPROC - 1)
+        
+        print(f"Looking up key {random_key} via node {target_node}")
+        
+        # Send LOOKUP request to the randomly chosen node
+        self.channel.send_to([str(target_node)], (constChord.LOOKUP_REQ, random_key))
+        
+        # Wait for the response
+        message = self.channel.receive_from_any()
+        sender = message[0]
+        response = message[1]
+        
+        if response[0] == constChord.LOOKUP_REP:
+            responsible_node = int(response[1])
+            print(f"Result: Node {responsible_node} is responsible for key {random_key}")
+        
+        # Topluca kapatma isteği gönder
+        # Send STOP to all nodes to shut down the system
+        self.channel.send_to(  # a final multicast
+            {i.decode() for i in list(self.channel.channel.smembers('node'))},
+            constChord.STOP)
 
 
 def create_and_run(num_bits, node_class, enter_bar, run_bar):

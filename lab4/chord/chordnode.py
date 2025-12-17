@@ -147,36 +147,38 @@ class ChordNode:
                 break
 
             if request[0] == constChord.LOOKUP_REQ:  # A lookup request
-                self.logger.info("Node {:04n} received LOOKUP {:04n} from {:04n}."
-                                 .format(self.node_id, int(request[1]), int(sender)))
-
-                # determine best next hop for the key
-                next_id: int = self.local_successor_node(request[1])
-
-                # if this node is responsible, reply directly
-                if next_id == self.node_id:
-                    self.channel.send_to([sender], (constChord.LOOKUP_REP, next_id))
+                # Extract key from request
+                key = int(request[1])
+                
+                # Determine the original sender (client who started the lookup)
+                # If request has 2 elements: this is the first request from client
+                # If request has 3 elements: this is a forwarded request, original sender is in request[2]
+                if len(request) == 2:
+                    original_sender = sender
                 else:
-                    # otherwise forward the lookup recursively to next hop and wait for its reply
-                    target = str(next_id)
-                    self.channel.send_to([target], (constChord.LOOKUP_REQ, request[1]))
-                    try:
-                        _sender2, reply = self.channel.receive_from({target})
-                        if reply[0] == constChord.LOOKUP_REP:
-                            # forward the found successor to original requester
-                            self.channel.send_to([sender], reply)
-                        else:
-                            # unexpected reply, fall back to forwarding local next_id
-                            self.channel.send_to([sender], (constChord.LOOKUP_REP, next_id))
-                    except AssertionError:
-                        # next hop might have disappeared; purge and reply with next_id
-                        if not self.channel.exists(next_id):
-                            self.delete_node(next_id)
-                        self.channel.send_to([sender], (constChord.LOOKUP_REP, next_id))
+                    original_sender = request[2]
+                
+                self.logger.info("Node {:04n} received LOOKUP {:04n} from {:04n}."
+                                 .format(self.node_id, key, int(sender)))
 
-                # sanity check
-                if not self.channel.exists(next_id):
-                    self.delete_node(next_id)
+                # Zuständigen Knoten für den Schlüssel lokal bestimmen
+                next_id: int = self.local_successor_node(key)
+                
+                # Check if this node is the responsible node
+                if next_id == self.node_id:
+                    # This node is responsible - send result to original sender
+                    self.logger.info("Node {:04n} is responsible for key {:04n}, replying to {:04n}."
+                                     .format(self.node_id, key, int(original_sender)))
+                    self.channel.send_to([original_sender], (constChord.LOOKUP_REP, next_id))
+                else:
+                    # Recursive Aufruf an den nächsten Knoten
+                    self.logger.info("Node {:04n} forwarding LOOKUP {:04n} to {:04n}."
+                                     .format(self.node_id, key, next_id))
+                    self.channel.send_to([str(next_id)], (constChord.LOOKUP_REQ, key, original_sender))
+
+                # Finally do a sanity check..
+                if not self.channel.exists(next_id):  # probe for existence
+                    self.delete_node(next_id)  # purge disappeared node
 
             elif request[0] == constChord.JOIN:
                 # Join request (the node was already registered above)
